@@ -1,0 +1,117 @@
+🧠 SocialSentimentTracker
+AI-Powered Multi-Platform Brand Sentiment Analysis & Daily Slack Reporting via n8n
+📘 Overview
+
+SocialSentimentTracker is an automated workflow built with n8n, designed to monitor your brand’s presence across major social media platforms — Facebook, Instagram, and X (Twitter).
+
+It fetches your latest posts or mentions, analyzes audience sentiment using Google Gemini AI, stores insights in a Google Sheet, and sends a daily Slack summary to your team.
+
+This project provides businesses and educators with a powerful no-code automation system for real-time brand sentiment tracking and team updates.
+
+⚙️ Key Features
+
+✅ Multi-Platform Monitoring — Fetches recent posts and mentions from Facebook, Instagram, and X (Twitter) using Graph and REST APIs.
+✅ AI Sentiment Analysis — Uses Google Gemini to classify sentiment as Positive, Negative, or Neutral.
+✅ Google Sheet Logging — Automatically saves each analyzed mention/post with its timestamp, sentiment, and platform.
+✅ Slack Reporting — Sends a neatly formatted daily summary report (via Slack bot) with sentiment breakdowns and top mentions.
+✅ Full Automation — Runs automatically every day at 10:00 AM via an n8n Cron Trigger.
+
+🧩 Architecture
+graph TD
+A[🔔 Cron Trigger - 10 AM Daily] --> B[⚙️ Workflow Configuration - Page IDs, Sheet ID, Brand Name]
+B --> C1[📘 Fetch Facebook Mentions]
+B --> C2[📷 Fetch Instagram Mentions]
+B --> C3[🐦 Fetch X (Twitter) Mentions]
+
+C1 --> D[🔹 Split Out Items]
+C2 --> D
+C3 --> D
+
+D --> E[🤖 Google Gemini - Sentiment Analysis]
+E --> F[🧠 Parse Sentiment Results]
+F --> G[📊 Save to Google Sheet]
+G --> H[💬 Prepare Slack Summary]
+H --> I[📢 Send Slack Summary]
+
+🧱 Workflow Node Details
+Step	Node Name	Purpose
+1️⃣	Cron Trigger	Triggers the workflow every day at 10 AM.
+2️⃣	Workflow Configuration	Stores your Google Sheet ID, Facebook/Instagram/X Page IDs, and brand name.
+3️⃣	Fetch Mentions	Collects recent posts or tagged mentions from each connected platform via API.
+4️⃣	Split Out Items	Converts multi-post JSON into individual posts for sentiment analysis.
+5️⃣	Google Gemini Sentiment Analysis	Classifies each post as positive, negative, or neutral.
+6️⃣	Parse Sentiment Results	Extracts sentiment label, post text, platform, and timestamp into clean JSON.
+7️⃣	Save to Google Sheet	Logs each analyzed post into Google Sheets with structured columns.
+8️⃣	Prepare Slack Summary	Counts sentiment types, compiles stats, and formats a daily report.
+9️⃣	Send Slack Summary	Sends the final report to your team’s Slack channel.
+🧾 Google Sheet Setup
+
+Create a Google Sheet named Brand Mentions with these columns:
+
+Post Content	Sentiment	Platform	Timestamp	Link
+
+Then, copy the Sheet ID from its URL and paste it into your n8n Workflow Configuration Node.
+
+💬 Slack Integration
+
+Go to Slack API Apps
+.
+
+Create a new app → Add Bot Token with chat:write permission.
+
+Invite the bot (e.g., @n8n bot) to your target Slack channel.
+
+In n8n, configure the Send Slack Message node with your bot token and channel ID.
+
+Your daily report will look like this:
+
+📊 Daily Brand Mention Report
+✅ Positive: 2 (50%)
+❌ Negative: 1 (25%)
+➖ Neutral: 1 (25%)
+
+📰 Sample Mentions:
+• POSITIVE: zmtech is bringing you new AI stuff!
+• NEGATIVE: zmtech is not a good brand.
+
+📈 View full report: [Google Sheet Link]
+
+🤖 Technologies Used
+Tool	Purpose
+n8n	Workflow automation engine
+Google Gemini AI	Sentiment analysis
+Facebook Graph API	Fetch Facebook mentions
+Instagram Graph API	Fetch Instagram mentions
+Twitter API (v2)	Fetch X/Twitter mentions
+Google Sheets API	Data storage
+Slack API	Report automation
+⚙️ Environment Variables (recommended)
+Variable	Description
+FACEBOOK_PAGE_TOKEN	Page Access Token for Facebook Graph API
+INSTAGRAM_ACCESS_TOKEN	Instagram token
+TWITTER_BEARER_TOKEN	X API v2 bearer token
+GOOGLE_SHEET_ID	Google Sheet ID for storing data
+SLACK_BOT_TOKEN	Token for Slack bot
+SLACK_CHANNEL_ID	Channel where reports are sent
+🚀 Deployment
+
+You can host this workflow on:
+
+Render (recommended for always-on uptime)
+
+n8n Cloud
+
+VPS (Docker + PM2 setup)
+
+UptimeRobot for pinging to keep it alive
+
+📅 Automation
+Task	Schedule
+Fetch Mentions	Daily at 10 AM
+Sentiment Analysis	Instant after fetching
+Slack Summary	Immediately after analysis
+🧑‍💻 Author
+
+Developed by: [Zuhaib]
+Project: SocialSentimentTracker
+Built with: n8n + Google Gemini + Slack + Google Sheets

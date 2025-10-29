@@ -1,0 +1,455 @@
+{
+  "name": "Social Media Brand Mention and Sentiment Tracker with Daily Slack Reports",
+  "nodes": [
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "=C09NZF95P37"
+        },
+        "text": "={{ $json.message }}",
+        "otherOptions": {
+          "sendAsUser": "="
+        }
+      },
+      "id": "d5c35d18-3c31-473b-81a1-71a8aacb4d03",
+      "name": "Send Slack Summary",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        2096,
+        96
+      ],
+      "webhookId": "d8b99dfa-c469-4a73-993f-1c3051be7a67",
+      "credentials": {
+        "slackApi": {
+          "id": "ND6YnxWk0eI2EYwr",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get sentiment data directly from Parse Sentiment Results\nlet items;\ntry {\n  items = $('Parse Sentiment Results').all();\n} catch (e) {\n  items = $input.all();\n}\n\n// Handle empty case\nif (!items || items.length === 0) {\n  return [{ json: { message: \"⚠️ No sentiment data found\" } }];\n}\n\n// Normalize to JSON\nitems = items.map(i => i.json ?? i);\n\n// Count sentiment categories\nconst positive = items.filter(i => (i.sentiment || '').toLowerCase() === 'positive').length;\nconst negative = items.filter(i => (i.sentiment || '').toLowerCase() === 'negative').length;\nconst neutral = items.filter(i => (i.sentiment || '').toLowerCase() === 'neutral').length;\nconst total = positive + negative + neutral;\n\n// Get Google Sheet URL (if exists)\nlet sheetUrl = '';\ntry {\n  const sheetId = $('Workflow Configuration').first().json.googleSheetId;\n  sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}`;\n} catch (e) {\n  sheetUrl = 'No Google Sheet linked';\n}\n\n// Create sample post preview\nconst samplePosts = items.slice(0, 5).map(it => {\n  const text = it.content || it.message || '(no text)';\n  const sentiment = (it.sentiment || 'unknown').toUpperCase();\n  return `• ${sentiment}: ${text.substring(0, 120)}`;\n}).join('\\n');\n\n// Final Slack message\nconst message = `\n📊 *Daily Brand Mention Report*\n*Total Mentions:* ${total}\n\n✅ Positive: ${positive} (${total ? Math.round((positive / total) * 100) : 0}%)\n❌ Negative: ${negative} (${total ? Math.round((negative / total) * 100) : 0}%)\n➖ Neutral: ${neutral} (${total ? Math.round((neutral / total) * 100) : 0}%)\n\n📰 *Sample Mentions:*\n${samplePosts}\n\n📈 View full report: ${sheetUrl}\n`;\n\nreturn [{\n  json: {\n    message,\n    total,\n    positive,\n    negative,\n    neutral,\n    samplePosts,\n    sheetUrl\n  }\n}];\n"
+      },
+      "id": "647cf655-435f-4e9f-8d67-312e83320c61",
+      "name": "Prepare Slack Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1872,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Workflow Configuration').first().json.googleSheetId }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Brand Mentions"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $json.timestamp }}",
+            "Platform": "={{ $json.platform }}",
+            "Sentiment": "={{ $json.sentiment }}",
+            "Post Text": "={{ $json.content }}",
+            "Link": "={{ $('Fetch Facebook Mentions').item.json.data[0].permalink_url }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Platform",
+              "displayName": "Platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Mention Source",
+              "displayName": "Mention Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Post Text",
+              "displayName": "Post Text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Sentiment",
+              "displayName": "Sentiment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Sentiment Score",
+              "displayName": "Sentiment Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Link",
+              "displayName": "Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "60eeb1f8-faec-4e80-be26-2acc9c46bffa",
+      "name": "Save to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1600,
+        96
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "MxP2bsGhb1MJBuWU",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const geminiOutput = item.json.content?.parts?.[0]?.text?.toLowerCase().trim() || 'neutral';\n  const postText = item.json.message || item.json.caption || item.json.text || '';\n  const timestamp = item.json.created_time || new Date().toISOString();\n  const link = item.json.permalink_url || '';\n\n  return {\n    json: {\n      sentiment: geminiOutput,\n      content: postText,\n      platform: 'Facebook',\n      timestamp,\n      link\n    }\n  };\n});\n"
+      },
+      "id": "b9fa8682-2d00-411b-855d-1dacac40f6db",
+      "name": "Parse Sentiment Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Analyze the sentiment of this post and respond with ONLY one word: positive, negative, or neutral.\nPost: {{ $json.message || $json.caption || $json.text }}\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "86ad27d9-01e8-4004-9d3e-d2386b311677",
+      "name": "Analyze Sentiment with Gemini",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        592,
+        240
+      ],
+      "alwaysOutputData": false,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "5TQzwvpISXbtxPqT",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "graphApiVersion": "v20.0",
+        "node": "=\n{{ $('Workflow Configuration').first().json.facebookPageId}}",
+        "edge": "feed",
+        "options": {
+          "fields": {
+            "field": [
+              {
+                "name": "message"
+              },
+              {
+                "name": "created_time"
+              },
+              {
+                "name": "from"
+              },
+              {
+                "name": "id"
+              },
+              {
+                "name": "permalink_url"
+              }
+            ]
+          }
+        }
+      },
+      "id": "4cdbac39-5d88-42bd-9159-2b12d0a09e67",
+      "name": "Fetch Facebook Mentions",
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        480,
+        -64
+      ],
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "IZcLoyR83FWhM2z2",
+          "name": "Facebook Graph account 18"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "brandName",
+              "value": "zmtech",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "facebookPageId",
+              "value": "991132250740885",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "googleSheetId",
+              "value": "1_Fqk7YcNZulQIyxz0kufQO6YoEYLeZgb4Ys2ZSmZQBg",
+              "type": "string"
+            },
+            {
+              "id": "id-5",
+              "name": "slackChannel",
+              "value": "C09NZF95P37",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "4d4e596d-c51b-4713-9be0-450fba92478f",
+      "name": "Workflow Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        272,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "85d4dbd8-20b4-48df-ba25-b4b0ece3bf5f",
+      "name": "Daily Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        80,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        688,
+        -16
+      ],
+      "id": "7383837d-7019-4653-a1bf-b44ec93231ba",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        928,
+        -176
+      ],
+      "id": "c994fab2-f5b5-4d4c-b0c2-217cb5394c92",
+      "name": "Merge"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Prepare Slack Summary": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Prepare Slack Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Sentiment Results": {
+      "main": [
+        [
+          {
+            "node": "Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Sentiment with Gemini": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Workflow Configuration": {
+      "main": [
+        [
+          {
+            "node": "Fetch Facebook Mentions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Schedule": {
+      "main": [
+        [
+          {
+            "node": "Workflow Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Facebook Mentions": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Analyze Sentiment with Gemini",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Parse Sentiment Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b52defc7-91ec-444f-a0d4-bb521687eb4b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "772eee981f178201dea33a7bf091613c82a9031697e521c9ac51547a8f6e05f5"
+  },
+  "id": "IgUQLUHFh1BKOp53",
+  "tags": []
+}
